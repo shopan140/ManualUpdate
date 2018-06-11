@@ -5,106 +5,156 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+
+import com.kkr.model.CorrelationResult;
+
 
 public class CorrelationTask {
 	
-	public static double MINIMUM_MCAP;
-	public static String TIME_INTERVAL;
-	public static double MINIMUM_VOL;
-	public static int MINIMUM_PRICE_POINT;
-	public static double MINIMUM_NET_ASSETS;
-	
-	
-	public static ArrayList<Integer> companyIdList(Connection con) {
-		ArrayList<Integer> tickerList = new ArrayList<Integer> ();
-		
-		String sql = "select kc.kkr_company_id from kkr_company as kc LEFT JOIN "
-				+ "zsenia_equity_financials as zef on zef.kkr_company_id=kc.kkr_company_id "
-				+ " LEFT JOIN kkr_price as kp on kp.KKR_company_ID=kc.kkr_company_id WHERE "
-				+ " kc.Type='Equity' and zef.marketCap > 25000000 and kp.PRICE_DATE >(NOW() "
-				+ "-INTERVAL 3 MONTH) and zef.endDate > (NOW() -INTERVAL 3 MONTH)"
-				+ " GROUP BY kp.KKR_company_ID HAVING avg(kp.volume) > 25000;";
-		
-		try {
-			PreparedStatement pstm = con.prepareStatement(sql);
-			ResultSet rs = pstm.executeQuery();
-			while(rs.next()) {
-				tickerList.add(rs.getInt(1));
-			}
-			
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
-		
-		return tickerList;
+	public static CorrelationResult getCorrelationResult(Connection con,Map<String, Double> map1, Map<String,
+			Double> map2, Integer id1, Integer id2) {
+		Double corr = getCorrelation(map1,map2);
+		String ticker1 = getCompanyTicker(con,id1);
+		String ticker2 = getCompanyTicker(con,id2);
+		CorrelationResult cr = new CorrelationResult(ticker1,ticker2,corr);
+		return cr;
 	}
 	
-	public static ArrayList<Integer> fundIdList(Connection con) {
-		ArrayList<Integer> tickerList = new ArrayList<Integer> ();
+	public static ArrayList<Map<String, Double>> getMapList(Connection con, ArrayList<Integer> combineList,
+			String startDate, String endDate) {
 		
-		String sql = "select kc.kkr_company_id from kkr_company as kc "
-				+ "LEFT JOIN kkr_fund_view as zef on zef.kkr_company_id=kc.kkr_company_id  "
-				+ "LEFT JOIN kkr_price as kp on kp.KKR_company_ID=kc.kkr_company_id WHERE  "
-				+ "kc.Type in ('etf', 'money market fund', 'Closed-End Fund') "
-				+ "and zef.netassets > 25000000 and kp.PRICE_DATE >(NOW() -INTERVAL 3 MONTH) "
-				+ "GROUP BY kp.KKR_company_ID HAVING avg(kp.volume) > 25000;";
-		
-		try {
-			PreparedStatement pstm = con.prepareStatement(sql);
-			ResultSet rs = pstm.executeQuery();
-			while(rs.next()) {
-				tickerList.add(rs.getInt(1));
-			}
-			
-		} catch(Exception e) {
-			e.printStackTrace();
+		ArrayList<Map<String, Double>> mapList = new ArrayList<Map<String, Double>>();
+		for(int i = 0; i <combineList.size(); i++) {
+			mapList.add(mapDailyReturnAndDate(con,combineList.get(i),startDate,endDate));
 		}
-		
-		return tickerList;
+		return mapList;
 	}
+	
 	
 	public static Map<String, Double> mapDailyReturnAndDate(Connection con, 
-			int companyId, String startDate, String endDate) {
+			Integer companyId, String startDate, String endDate) {
 		Map<String, Double> returnNdate = new HashMap<String, Double>();
 		
-		String sql = "Select PRICE_DATE, change_percent from kkr_price where kkr_company_id ="
-				+companyId+" and PRICE_DATE >"+startDate +" and PRICE_DATE <= "+endDate;
+		String sql = "select price_date, change_percent from kkr_price where kkr_company_id = "
+				+ companyId+" and Price_date> '"+startDate+"' and price_date<='"+endDate+"';";
+		
 		try {
 			PreparedStatement pstm = con.prepareStatement(sql);
 			ResultSet rs = pstm.executeQuery();
 			while(rs.next()) {
-				returnNdate.put(rs.getString(1), rs.getDouble(2));
+				returnNdate.put(rs.getString("PRICE_DATE"), rs.getDouble("change_percent"));
 			}
+			
 			
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
+		
+		
 		return returnNdate;
 	}
 	
-	public static double correlation(Map<String, Double> id1, Map<String, Double> id2) {
+	
+	private static double getCorrelation(Map<String, Double> tickerMap1, Map<String, Double> tickerMap2) {
 		double corr=0;
 		
 		ArrayList<Double> data1 = new ArrayList<Double>();
 		ArrayList<Double> data2 =new ArrayList<Double>();
-		
-		for(Map.Entry<String, Double> entry:id1.entrySet()) {
-			if(id2.containsKey(entry.getKey())) {
+		System.out.println("Map1  "+tickerMap1.size());
+		System.out.println("Map2 "+tickerMap2.size());
+		for(Map.Entry<String, Double> entry:tickerMap1.entrySet()) {
+			if(tickerMap2.containsKey(entry.getKey())) {
 				data1.add(entry.getValue());
-				data2.add(id2.get(entry.getKey()));
+				data2.add(tickerMap2.get(entry.getKey()));
 			}
 		}
+		
 		if(data1.size()==data2.size()&&data1.isEmpty()==false) {
 			corr = getCorrelation(data1,data2);
 		}
 		
+		System.out.println("List1 "+data1.size());
+		System.out.println("List2 "+data2.size());
 		return corr;
 	}
 	
-	public static double getCorrelation(List<Double> data1, List<Double> data2) {
+	public static ArrayList<Integer> companyIdList(Connection con, double minimumMcap,
+			String timeInterval, double minimumVol) {
+		ArrayList<Integer> tickerList = new ArrayList<Integer> ();
+		
+		String sql = "select kc.kkr_company_id from kkr_company as kc LEFT JOIN "
+				+ "zsenia_equity_financials as zef on zef.kkr_company_id=kc.kkr_company_id "
+				+ " LEFT JOIN kkr_price as kp on kp.kkr_company_id=kc.kkr_company_id WHERE "
+				+ " kc.Type='Equity' and zef.marketCap >"+ minimumMcap+" and kp.PRICE_DATE >(NOW() - "
+				+ timeInterval+") and zef.endDate > (NOW() - "+ timeInterval
+				+ ") GROUP BY kp.kkr_company_id HAVING avg(kp.volume) >"+ minimumVol+";";
+		
+		try {
+			PreparedStatement pstm = con.prepareStatement(sql);
+			ResultSet rs = pstm.executeQuery();
+			while(rs.next()) {
+				tickerList.add(rs.getInt(1));
+			}
+			
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+		return tickerList;
+	}
+	
+	public static ArrayList<Integer> fundIdList(Connection con, double minimumAsset,
+			String timeInterval, double minimumVol) {
+		ArrayList<Integer> tickerList = new ArrayList<Integer> ();
+		
+		String sql = "select kc.kkr_company_id from kkr_company as kc "
+				+ "LEFT JOIN kkr_fund_view as zef on zef.kkr_company_id=kc.kkr_company_id  "
+				+ "LEFT JOIN kkr_price as kp on kp.kkr_company_id=kc.kkr_company_id WHERE  "
+				+ "kc.Type in ('etf', 'money market fund', 'Closed-End Fund') "
+				+ "and zef.netassets > "+ minimumAsset+" and kp.PRICE_DATE >(NOW() -"+ timeInterval+") "
+				+ "GROUP BY kp.kkr_company_id HAVING avg(kp.volume) > "+ minimumVol+";";
+		
+		try {
+			PreparedStatement pstm = con.prepareStatement(sql);
+			ResultSet rs = pstm.executeQuery();
+			while(rs.next()) {
+				tickerList.add(rs.getInt(1));
+			}
+			
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+		return tickerList;
+	}
+	
+	
+	public static String getCompanyTicker(Connection con, Integer companyId) {
+		String companyTicker = null;
+		String sqlTicker = "select company_ticker from kkr_company where kkr_company_id = "+companyId;
+		try {
+			PreparedStatement pstm = con.prepareStatement(sqlTicker);
+			ResultSet rs = pstm.executeQuery();
+			while(rs.next()) {
+				companyTicker = rs.getString(1);
+			}
+		} catch(Exception e) {
+			System.out.println("Ticker not found for this "+companyId);
+		}
+		return companyTicker;
+	}	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	private static double getCorrelation(ArrayList<Double> data1, ArrayList<Double> data2) {
 		double sum_sq_x = 0;
 		double sum_sq_y = 0;
 		double sum_coproduct = 0;
