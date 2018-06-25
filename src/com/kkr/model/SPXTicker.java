@@ -2,14 +2,26 @@ package com.kkr.model;
 
 public class SPXTicker {
 	
-	private static final double badObject = -1;
-	public static final String[] heading = {"Ticker"};
+	
+	
 	private String tickerName;
-	private double badObjectMark = badObject;
+	private boolean badObject = false;
+	private static final int position = 0;
 	
 	
 	public void setTickerName(String tickerName) {
-		if(tickerName.contains(" ")==false) this.tickerName = tickerName;
+		if(tickerName.contains(" ")==true) {
+			String[] tickers = tickerName.split(" ");
+			if(tickers[position].equals("")==false) {
+				this.tickerName = tickers[position];
+			} else setBadObject(true);
+			
+		} else {
+			if(tickerName.equals("")==false) {
+				this.tickerName = tickerName;
+			} else setBadObject(true);
+		} 
+		
 		
 	}
 	
@@ -17,15 +29,15 @@ public class SPXTicker {
 		return tickerName;
 	}
 	
-	public void setBadObjectMark(double badObjectMark) {
-		this.badObjectMark = badObjectMark;
+	public void setBadObject(boolean badObjectMark) {
+		this.badObject = badObjectMark;
 	}
 	
-	public double getBadObjectMark() {
-		return badObjectMark;
+	public boolean getBadObject() {
+		return badObject;
 	}
 	
 	public String toString() {
-		return "Ticker Name: "+tickerName+", Object Status: "+badObjectMark;
+		return "Ticker Name: "+tickerName+", Object Status: "+badObject;
 	}
 }

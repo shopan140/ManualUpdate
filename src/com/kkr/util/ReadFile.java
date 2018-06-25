@@ -4,43 +4,18 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.ArrayList;
 
-public class ReadFile
-{
-	private String fileName;
-	private BufferedReader br;
-	private FileReader fr;
+public class ReadFile {
+	private static BufferedReader br;
+	private static FileReader fr;
 	
-	// constructor takes a file name
-	public ReadFile(String fileName){
-		this.fileName = fileName;
-	}
+	
 	public ReadFile() {
 		super();
 	}
 	
 	
-	public  void read(ArrayList<ArrayList<String>> dataHolder) {
-		try {
-			fr = new FileReader(fileName);
-			br = new BufferedReader(fr);
-			
-			String line = null;
-			while((line = br.readLine())!=null) {
-				ArrayList<String> al = new ArrayList<String>();
-				al = splitLine(line,",");
-				dataHolder.add(al);
-				
-			}
-			
-		}
-		catch(Exception e) {
-			System.out.println("Invalid file path");
-			
-		}
-	}
 	
-	
-	public  ArrayList<ArrayList<String>> read(String fileName) {
+	public static  ArrayList<ArrayList<String>> read(String fileName) {
 		ArrayList<ArrayList<String>> dataHolder = new ArrayList<ArrayList<String>>();
 		try {
 			fr = new FileReader(fileName);
@@ -50,7 +25,8 @@ public class ReadFile
 			while((line = br.readLine())!=null) {
 				ArrayList<String> al = new ArrayList<String>();
 				al = splitLine(line,",");
-				dataHolder.add(al);
+				if(al.isEmpty()==false) dataHolder.add(al);
+				
 				
 			}
 			
@@ -64,8 +40,9 @@ public class ReadFile
 	
 	// read file with a date column using date column number and parsing that date into
 	// sql date format 'yyyy-mm-dd'
-	public  void read(ArrayList<ArrayList<String>> dataHolder, int dateColumn,
+	public static ArrayList<ArrayList<String>> read(String fileName, int dateColumn,
 			int header) {
+		ArrayList<ArrayList<String>> dataHolder = new ArrayList<ArrayList<String>>();
 		try {
 			fr = new FileReader(fileName);
 			br = new BufferedReader(fr);
@@ -86,17 +63,20 @@ public class ReadFile
 		catch(Exception e){
 			e.printStackTrace();
 		}
-		
+		return dataHolder;
 	}
 	
 	
 	// a method to split the string line into several string
-	private ArrayList<String> splitLine(String line, String mark) {
+	private static ArrayList<String> splitLine(String line, String mark) {
 		ArrayList<String> splitedLine = new ArrayList<String>();
-		String[] splited = line.split(mark);
-		
-		for(int i = 0; i < splited.length; i++) {
-			splitedLine.add(splited[i]);
+		if(!line.equalsIgnoreCase("")) {
+			String[] splited = line.split(mark);
+			
+			for(int i = 0; i < splited.length; i++) {
+				if(splited[i].equals("")==false)
+				splitedLine.add(splited[i]);
+			}
 		}
 		
 		return splitedLine;
