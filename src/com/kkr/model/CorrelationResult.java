@@ -2,9 +2,12 @@ package com.kkr.model;
 
 public class CorrelationResult {
 	
+	private static final String defaultStatus = "Y";
+	
 	private String companyTicker1;
 	private String companyTicker2;
 	private double correlation;
+	private String updateStatus = defaultStatus;
 	
 	public CorrelationResult() {
 		super();
@@ -40,11 +43,19 @@ public class CorrelationResult {
 	public void setCorrelation(double correlation) {
 		this.correlation = correlation;
 	}
+	
+	public String getUpdateStatus() {
+		return updateStatus;
+	}
+	
+	public void setUpdateStatus(String updateStatus) {
+		this.updateStatus = updateStatus;
+	}
 
 	@Override
 	public String toString() {
 		return "CorrelationResult [companyTicker1=" + companyTicker1 + ", companyTicker2=" + companyTicker2
-				+ ", correlation=" + correlation + "]";
+				+ ", correlation=" + correlation + ", updateStatus="+updateStatus+"]";
 	}
 	
 	

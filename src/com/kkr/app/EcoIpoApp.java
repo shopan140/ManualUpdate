@@ -22,7 +22,7 @@ public class EcoIpoApp {
 	private static String beginDate;
 	private static final int positionPrior = 5;
 	private static final int header = 1;
-	private static Scanner input = new Scanner(System.in);
+	private static Scanner input = null;
 	
 	
 	public static void main(String [] agrs) throws ClassNotFoundException, SQLException {
@@ -47,7 +47,7 @@ public class EcoIpoApp {
 				
 				System.out.println("Provide the full path of input file: ");
 				inputFile = input.nextLine();
-				list = new ReadFile().read(inputFile);
+				list = ReadFile.read(inputFile);
 				if (!list.isEmpty()) {
 					CommonUtils.insertHeading(list.get(0), "Period", positionPrior);
 					Map<String,Integer> colIndex = new HashMap<String, Integer>();
@@ -68,7 +68,7 @@ public class EcoIpoApp {
 				beginDate = input.nextLine();
 				
 				ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
-				list = new ReadFile().read(inputFile);
+				list = ReadFile.read(inputFile);
 				if (!list.isEmpty()) {
 					Map<String,Integer> colIndex = new HashMap<String, Integer>();
 					colIndex = CommonUtils.mapColumnIndex(list.get(0),IpoData.heading);
@@ -81,7 +81,11 @@ public class EcoIpoApp {
 				else System.out.println("Start over aggin");
 				
 			}
-			else if(command.equalsIgnoreCase("break")) return;
+			else if(command.equalsIgnoreCase("break")) 
+				conP.close();
+				conD.close();
+//				conL.close();
+				return;
 		}
 		
 	}

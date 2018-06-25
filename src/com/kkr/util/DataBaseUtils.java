@@ -75,4 +75,17 @@ public class DataBaseUtils {
 		con.setAutoCommit(true);
 		return con;
 	}
+	
+	public static Connection connectsislam() throws ClassNotFoundException, SQLException {
+		Class.forName("com.mysql.jdbc.Driver");
+		/*
+		 * Connection string for kkrdev
+		 * "jdbc:mysql://kkrdev.craeiofbogb9.us-west-2.rds.amazonaws.com:3306/kkrdb?rewriteBatchedStatements=true"
+		 * ,"kkr_app","kkr123"
+		 */
+		Connection con = (Connection) DriverManager
+				.getConnection("jdbc:mysql://192.168.0.14:3306/kkrdb?rewriteBatchedStatements=true","shopan140","123");
+		con.setAutoCommit(true);
+		return con;
+	}
 }
