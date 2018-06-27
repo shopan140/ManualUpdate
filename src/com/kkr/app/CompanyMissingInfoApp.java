@@ -6,7 +6,7 @@ import java.sql.SQLException;
 import com.kkr.model.task.CompanyMissingInfoTask;
 import com.kkr.util.DataBaseUtils;
 
-public class CompanyMissingInfo {
+public class CompanyMissingInfoApp {
 
 	public static void main(String []args) throws ClassNotFoundException, SQLException{
 		Connection conKkrDev = DataBaseUtils.connectkkrDev();

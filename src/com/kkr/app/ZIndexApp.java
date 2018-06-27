@@ -9,7 +9,7 @@ import com.kkr.model.task.VolatilityIndexTask;
 import com.kkr.model.task.ZIndexTask;
 import com.kkr.util.DataBaseUtils;
 
-public class ZIndex {
+public class ZIndexApp {
 	
 	public static void main(String [] args) throws Exception{
 		
