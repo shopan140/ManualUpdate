@@ -9,7 +9,7 @@ public class DataBaseUtils {
 	public static Connection connectLocal() throws ClassNotFoundException, SQLException {
 		Class.forName("com.mysql.jdbc.Driver");
 		Connection con = (Connection) DriverManager
-				.getConnection("jdbc:mysql://localhost:3306/kkr_database?rewriteBatchedStatements=true", "root", "Orchid1406");
+				.getConnection("jdbc:mysql://localhost:3306/kkrdb?rewriteBatchedStatements=true", "root", "");
 		con.setAutoCommit(true);
 		return con;
 	}
@@ -45,7 +45,7 @@ public class DataBaseUtils {
 		 * 
 		 */
 		Connection con = (Connection) DriverManager
-				.getConnection("jdbc:mysql://kkrprod.craeiofbogb9.us-west-2.rds.amazonaws.com:3306/kkrclient?rewriteBatchedStatements=true","kkr_app","kkr123");
+				.getConnection("jdbc:mysql://kkrprod.craeiofbogb9.us-west-2.rds.amazonaws.com:3306/kkrClient?rewriteBatchedStatements=true","kkr_app","kkr123");
 		con.setAutoCommit(true);
 		return con;
 	}
@@ -58,7 +58,7 @@ public class DataBaseUtils {
 		 * ,"kkr_app","kkr123"
 		 */
 		Connection con = (Connection) DriverManager
-				.getConnection("jdbc:mysql://kkrdev.craeiofbogb9.us-west-2.rds.amazonaws.com:3306/kkrclient?rewriteBatchedStatements=true","kkr_app","kkr123");
+				.getConnection("jdbc:mysql://kkrdev.craeiofbogb9.us-west-2.rds.amazonaws.com:3306/kkrClient?rewriteBatchedStatements=true","kkr_app","kkr123");
 		con.setAutoCommit(true);
 		return con;
 	}
