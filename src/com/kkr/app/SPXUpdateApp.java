@@ -26,7 +26,7 @@ public class SPXUpdateApp {
 			System.out.println("Input command {SPX, break}: ");
 			String command = input.nextLine();
 			if(command.equalsIgnoreCase("SPX")) {
-				System.out.println("Input the file path and name for SP500 ticker list: ");
+				System.out.println("Input the file path and name for S&P500 ticker list: ");
 				String fileName = input.nextLine();
 				ArrayList<ArrayList<String>> dataHolder = new ArrayList<ArrayList<String>>();
 				dataHolder = ReadFile.read(fileName);
