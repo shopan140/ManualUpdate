@@ -36,15 +36,15 @@ public class ZIndexTask {
 			insertData(d_date, conL, conKkr, YindexDev);
 			inserDataForPercents(d_date, conKkr, percentIndexMapDev);
 
-			insertData(d_date, conL, conKkr, YindexProd);
-			inserDataForPercents(d_date, conKkr, percentIndexMapProd);
+			insertData(d_date, conL, conkkrProd, YindexProd);
+			inserDataForPercents(d_date, conkkrProd, percentIndexMapProd);
 			if (i == 0) {
 				prev_date = d_date;
 				i++;
 				continue;
 			}
 			updatePortfolioTimeSeriePercents(d_date, prev_date, conKkr, percentIndexMapDev);
-			updatePortfolioTimeSeriePercents(d_date, prev_date, conKkr, percentIndexMapProd);
+			updatePortfolioTimeSeriePercents(d_date, prev_date, conkkrProd, percentIndexMapProd);
 			prev_date = d_date;
 		}
 
@@ -58,7 +58,7 @@ public class ZIndexTask {
 		while (rsL1.next()) {
 			String d_date = rsL1.getString(1);
 			insertVolatilityData(d_date, conL, conKkr, volatality_index_dev);
-			insertVolatilityData(d_date, conL, conKkr, volatality_index_prod);
+			insertVolatilityData(d_date, conL, conkkrProd, volatality_index_prod);
 		}
 
 	}
