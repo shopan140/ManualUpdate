@@ -28,9 +28,10 @@ public class VolatilityIndexTask {
 
 
 
-	public static void HistoricalPricedataRead(String start_date, String end_date, String show_option, String freq,Connection con)
+	public static boolean HistoricalPricedataRead(String start_date, String end_date, String show_option, String freq,Connection con)
 			throws Exception {
 
+		int countData=0;
 		long end_secs = 0;
 		long start_secs = 0;
 		String interval=null;
@@ -139,14 +140,16 @@ public class VolatilityIndexTask {
 				downServers.add(vi);
 
 			}
-			InsertDataIntoVolatilityTable(downServers,con);
+			countData=InsertDataIntoVolatilityTable(downServers,con,countData);
+			if(countData>0) return true;
 
 		} catch (IOException e) {
 			e.printStackTrace();
 		}	
+		return false;
 	}
 	
-	private static void InsertDataIntoVolatilityTable(ArrayList<VolatilityIndex> downServers,Connection con) throws ClassNotFoundException, SQLException {
+	private static int InsertDataIntoVolatilityTable(ArrayList<VolatilityIndex> downServers,Connection con,int countdata) throws ClassNotFoundException, SQLException {
 		// TODO Auto-generated method stub
 		
 
@@ -178,7 +181,10 @@ public class VolatilityIndexTask {
 				pSLocal.setDouble(6, downServers.get(i).getAdjClose());
 				
 				pSLocal.execute();
+				countdata++;
 			}
 		}
+		return countdata;
 	}
+	
 }
