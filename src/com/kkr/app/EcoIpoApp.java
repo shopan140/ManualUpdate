@@ -30,19 +30,15 @@ public class EcoIpoApp {
 		Connection conP = DataBaseUtils.connectkkrProd();
 		Connection conD = DataBaseUtils.connectkkrDev();
 //		Connection conL = DataBaseUtils.connectLocal();
-		String inputFile = "/Users/Shopan/Desktop/raw.csv";
+		String inputFile = null;
 		
 		input = new Scanner(System.in);
 		
 		while(true) {
 			System.out.print("Input Command for task {ECON, IPO, Break}: ");
 			String command = input.nextLine();
-			if(command.equalsIgnoreCase("Break")) {
-				System.out.println("Program Closed");
-				break;
-			} 
-			
-			else if(command.equalsIgnoreCase("ECON")) {
+						
+			if(command.equalsIgnoreCase("ECON")) {
 				ArrayList<ArrayList<String>> list = new ArrayList<ArrayList<String>>();
 				
 				System.out.println("Provide the full path of input file: ");
@@ -81,11 +77,12 @@ public class EcoIpoApp {
 				else System.out.println("Start over aggin");
 				
 			}
-			else if(command.equalsIgnoreCase("break")) 
+			else if(command.equalsIgnoreCase("break")) {
 				conP.close();
 				conD.close();
-//				conL.close();
+				System.out.println("Program Closed");
 				return;
+			}
 		}
 		
 	}
