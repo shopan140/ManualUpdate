@@ -121,6 +121,7 @@ public class DateUtils
 		}
 		return bl;
 	}
+	
 	public static String formatDate(Date date, String format) {
 		if(null != date) {		
 			return new SimpleDateFormat(format).format(date);
