@@ -23,6 +23,7 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 import com.kkr.model.CompanyTickerInfo;
+import com.kkr.util.DataBaseUtils;
 
 
 
@@ -37,16 +38,10 @@ public class UpdateDeleteTickerTask {
 	public static Map<String, String> typeMap = new HashMap<String, String>();
 	public static ArrayList<CompanyTickerInfo> tickerinfoQMList = new ArrayList<CompanyTickerInfo>();
 	public static ArrayList<CompanyTickerInfo> addList = new ArrayList<CompanyTickerInfo>();
-	public static ArrayList<Integer> deleteCompanyTickerList = new ArrayList<Integer>();
+	public static Map<Integer,String> deleteCompanyTickerList = new HashMap<Integer,String>();
 	public static Map<String, CompanyTickerInfo> symbolObjectMap = new HashMap<String, CompanyTickerInfo>();
+	public static Map<Integer,String>  finalSymbolDeleteList = new HashMap<Integer,String>();
 
-	private static Connection connectLocal() throws ClassNotFoundException, SQLException {
-		Class.forName("com.mysql.jdbc.Driver");
-		Connection con = (Connection) DriverManager
-				.getConnection("jdbc:mysql://localhost:3306/kkrdb?rewriteBatchedStatements=true", "root", "");
-		con.setAutoCommit(true);
-		return con;
-	}
 
 	public static void typeMapCreation(Connection con) throws SQLException {
 		String sql = "SELECT DISTINCT Type FROM `kkr_company`";
@@ -130,15 +125,8 @@ public class UpdateDeleteTickerTask {
 								: null;
 						String sectype = equityinfoJSON.has("sectype") ? equityinfoJSON.getString("sectype") : null;
 						String isocfi = equityinfoJSON.has("isocfi") ? equityinfoJSON.getString("isocfi") : null;
-						// System.out.println("instrument_type: "
-						// +instrument_type+":: longname: "+longname+"::
-						// shortname: "+shortname+":: symbol: "
-						// +symbol+":: exchange: "+symbolstring+":: issuetype:
-						// "+issuetype+":: sectype: "+sectype+":: isocfi:
-						// "+isocfi);
-
-						// System.out.println("instrument: "+instrument_type);
-						if (symbol.contains(":")) {
+						
+						if (symbol.contains(":")|| symbol.equals(null)) {
 							continue;
 						}
 						if (typeMap.containsKey(instrument_type.toLowerCase())) {
@@ -182,18 +170,22 @@ public class UpdateDeleteTickerTask {
 
 	public static void CreateAddDeleteList(Connection con) throws IOException {
 
+	
 		for (Map.Entry<String, Map<Integer, String>> eEntry : TypeWiseTcikerMapDatBase.entrySet()) {
 			String instrumentType = eEntry.getKey();
 			if (TypeWiseTcikerMapQM.containsKey(instrumentType)) {
 				Map<Integer, String> mQM = new HashMap<Integer, String>();
 				mQM.putAll(TypeWiseTcikerMapQM.get(instrumentType));
+				int k=0;
 				for (Map.Entry<Integer, String> eeEntry : eEntry.getValue().entrySet()) {
 					String ticker = eeEntry.getValue();
 					if (!mQM.containsValue(ticker)) {
-						deleteCompanyTickerList.add(eeEntry.getKey());
+						deleteCompanyTickerList.put(eeEntry.getKey(),eeEntry.getValue());
+						k++;
 					}
 
 				}
+				System.out.println("type: " + instrumentType + " :: delete number size: " + k);
 			}
 		}
 		BufferedWriter bw= new BufferedWriter(new FileWriter(new File("resources/deleteList.txt")));
@@ -203,17 +195,19 @@ public class UpdateDeleteTickerTask {
 		
 		for (Map.Entry<String, Map<Integer, String>> eEntry : TypeWiseTcikerMapQM.entrySet()) {
 			String instrumentType = eEntry.getKey();
+			int m=0;
 			if (TypeWiseTcikerMapDatBase.containsKey(instrumentType)) {
 				Map<Integer, String> mDataBase = new HashMap<Integer, String>();
 				mDataBase.putAll(TypeWiseTcikerMapDatBase.get(instrumentType));
-				System.out.println("type: " + instrumentType + " :: size: " + eEntry.getValue().size());
+				
 				for (Map.Entry<Integer, String> eeEntry : eEntry.getValue().entrySet()) {
 					String ticker = eeEntry.getValue();
 					if (!mDataBase.containsValue(ticker)) {
 						addList.add(symbolObjectMap.get(eeEntry.getValue()));
-						
+						m++;
 					}
 				}
+				System.out.println("type: " + instrumentType + " :: add number: " + m);
 			}
 		}
 		BufferedWriter bw1=new BufferedWriter(new FileWriter(new File("resources/addlist.txt")));
@@ -223,22 +217,115 @@ public class UpdateDeleteTickerTask {
 		}
 		
 		//bw.close();
+		System.out.println("QM list: "+symbolObjectMap.size());
 		System.out.println("Successfully Commpleted.");
 	}
 
-	public static void main(String[] args) throws SQLException, IOException {
-		Connection cLocal = null;
-		PreparedStatement pSLocal = null;
-		try {
-			cLocal = connectLocal();
-			pSLocal = cLocal.prepareStatement(iStatement);
-		} catch (ClassNotFoundException | SQLException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-			System.exit(1);
+	public void finalDeletListBuild(String startDate,String endDate,Connection cKkr) throws SQLException, IOException, ClassNotFoundException {
+		
+		for (Map.Entry<Integer, String> entry : deleteCompanyTickerList.entrySet()){
+			GetFullPriceHistory gfph=new GetFullPriceHistory();
+			try {
+				boolean decisionFlag=gfph.finalDeleteList(entry.getValue(), startDate, endDate);
+				System.out.println("Iteration: "+entry.getKey()+" ticker: "+entry.getValue()+" Boolean Value : "+decisionFlag);
+				if(decisionFlag) {
+					finalSymbolDeleteList.put(entry.getKey(),entry.getValue());
+					
+				}
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
-		// TODO Auto-generated method stub
-		createAllListnMaps(cLocal);
-		CreateAddDeleteList(cLocal);
+		BufferedWriter bw1=new BufferedWriter(new FileWriter(new File("resources/FinalDeletelist.txt")));
+		Connection conL=DataBaseUtils.connectLocal();
+		for (Map.Entry<Integer, String> entry : finalSymbolDeleteList.entrySet()){
+			String SQL="select * from kkr_company where kkr_company_id='"+entry.getKey()+"'";
+			PreparedStatement pSLocal = conL.prepareStatement("INSERT INTO kkr_company_delete_list(`kkr_company_id`,`Company_name`,`Company_ticker`,`Type`,"
+					+ "`Sector_id`,`Business_description`,`CEO`,`CFO`,`GC`,"
+					+ "`Searchable`,`default_index`,`sp500`,`end_date`,`Quarter`,`Short_Name`,`Sec_Type`,`Analyst_recommendation`,"
+					+ "`Analyst_recommendation1`,`Analyst_recommendation3`,"
+					+ "`Analyst_recommendation4`,`industry_type`,`Qm_sector_name`,`inserted_date`,`updated_date`,`exchange`) "
+					+ "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+			
+			Statement stKKr=cKkr.createStatement();
+			ResultSet rs=stKKr.executeQuery(SQL);
+			rs.next();
+			Integer company_id=rs.getInt(1);
+			String company_name=rs.getString(2);
+			String company_ticker=rs.getString(3);
+			String type=rs.getString(4);
+			Integer sector_id=rs.getInt(5);
+			String business_description=rs.getString(6);
+			String CEO = rs.getString(7);
+			String CFO= rs.getString(8);
+			String GC=rs.getString(9);
+			String Searchable=rs.getString(10);
+			Integer default_index=rs.getInt(11);
+			String sp500=rs.getString(12);
+			String end_date=rs.getString(13);
+			Integer quarter=rs.getInt(14); 
+			String short_name=rs.getString(15);
+			String sec_type=rs.getString(16);
+			String Analyst_recommendation=rs.getString(17);
+			String Analyst_recommendation1=rs.getString(18);
+			String Analyst_recommendation3=rs.getString(19);
+			String Analyst_recommendation4=rs.getString(20);
+			String industry_type=rs.getString(21);
+			String Qm_sector_name=rs.getString(22);
+			String inserted_date=rs.getString(23);
+			String updated_date=rs.getString(24);
+			String exchange=rs.getString(25);
+			
+			pSLocal.setInt(1, company_id);
+			pSLocal.setString(2, company_name);
+			pSLocal.setString(3, company_ticker);
+			pSLocal.setString(4, type);
+			pSLocal.setInt(5, sector_id);
+			pSLocal.setString(6, business_description);
+			pSLocal.setString(7, CEO);
+			pSLocal.setString(8, CFO);
+			pSLocal.setString(9, GC);
+			pSLocal.setString(10, Searchable);
+			pSLocal.setInt(11, default_index);
+			pSLocal.setString(12, sp500);
+			pSLocal.setString(13, end_date);
+			pSLocal.setInt(14, quarter);
+			pSLocal.setString(15, short_name);
+			pSLocal.setString(16, sec_type);
+			pSLocal.setString(17, Analyst_recommendation);
+			pSLocal.setString(18, Analyst_recommendation1);
+			pSLocal.setString(19, Analyst_recommendation3);
+			pSLocal.setString(20, Analyst_recommendation4);
+			pSLocal.setString(21, industry_type);
+			pSLocal.setString(22, Qm_sector_name);
+			pSLocal.setString(23, inserted_date);
+			pSLocal.setString(24, updated_date);
+			pSLocal.setString(25, exchange);
+			
+			pSLocal.execute();
+			
+			
+			bw1.write(entry.getKey()+" "+entry.getValue().toString()+"\n \n");
+		}
+		System.out.println("refined list: "+finalSymbolDeleteList.size());
+	}
+	public void InsertData(Connection ckkr) throws SQLException{
+		PreparedStatement ps=ckkr.prepareStatement("INSERT INTO kkr_company(`Company_name`,`Company_ticker`,`Type`,`Short_Name`,`Sec_Type`,`exchange`) VALUES(?,?,?,?,?,?)");
+		for(int i=0;i<addList.size();i++){
+			ps.setString(1, addList.get(i).getLongname());
+			ps.setString(2, addList.get(i).getSymbol());
+			ps.setString(3, addList.get(i).getInstrumenttype());
+			ps.setString(4, addList.get(i).getShorname());
+			ps.setString(5, addList.get(i).getSectype());
+			ps.setString(6,addList.get(i).getExchange());
+			
+			ps.execute();
+			
+		}
+	}
+	public void DeleteFromTable(Connection con,Connection cKkrClient) throws SQLException{
+		DeleteTickerTask dtt=new DeleteTickerTask();
+		dtt.deleteCallFunctions(finalSymbolDeleteList,con,cKkrClient);
 	}
 }
