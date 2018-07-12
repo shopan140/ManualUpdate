@@ -2,6 +2,7 @@ package com.kkr.model.task;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -22,17 +23,20 @@ import com.kkr.util.DataBaseUtils;
 public class CompanyMissingInfoTask {
 	public static final Map<String, Integer> sectorMap = new HashMap<String, Integer>();
 
-	private static JSONObject getResultsFromQMGCBS(String ticker) throws IOException {
+	private static JSONObject getResultsFromQMGCBS(String ticker) throws IOException, JSONException {
 		URL url = new URL("http://app.quotemedia.com/data/getCompanyBySymbol.json?webmasterId=102417&symbol="
 				+ URLEncoder.encode(ticker, "UTF-8"));
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		String responseString = "";
 		String enterpriseToken = "NWFiNjM2OGEtYjFmNy00YmNiLThlYTktOTQyMjM4ZGJjMGQ1";
+		InputStream is = null;
+		
 		try {
 			conn.setRequestMethod("GET");
 			conn.setRequestProperty("Accept", "application/json");
 			conn.setRequestProperty("Authorization", "Bearer " + enterpriseToken);
-			BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+			is = conn.getInputStream(); 
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
 			String output;
 			StringBuffer response = new StringBuffer();
 			while ((output = br.readLine()) != null) {
@@ -42,25 +46,35 @@ public class CompanyMissingInfoTask {
 			br.close();
 			JSONObject json = new JSONObject(responseString);
 			return json;
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+		} catch (IOException e) {
+            e.printStackTrace();
+        }
+        finally {
+            if(is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    System.out.println("Big problems if InputStream cannot be closed");
+                }
+            }           
+        }
 		return null;
 	}
 
-	private static JSONObject getResultsFromQMGPFD(String ticker) throws IOException {
+	private static JSONObject getResultsFromQMGPFD(String ticker) throws IOException, JSONException {
 		URL url = new URL(
 				"http://app.quotemedia.com/data/getPremiumFundData.json?webmasterId=102417&shareprice=true&symbol="
 						+ ticker);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		String responseString = "";
 		String enterpriseToken = "NWFiNjM2OGEtYjFmNy00YmNiLThlYTktOTQyMjM4ZGJjMGQ1";
+		InputStream is = null;
 		try {
 			conn.setRequestMethod("GET");
 			conn.setRequestProperty("Accept", "application/json");
 			conn.setRequestProperty("Authorization", "Bearer " + enterpriseToken);
-			BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+			is=conn.getInputStream();
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
 			String output;
 			StringBuffer response = new StringBuffer();
 			while ((output = br.readLine()) != null) {
@@ -72,10 +86,18 @@ public class CompanyMissingInfoTask {
 			if (!responseString.equals(""))
 				json = new JSONObject(responseString);
 			return json;
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
+		} catch (IOException e) {
+            e.printStackTrace();
+        }
+        finally {
+            if(is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    System.out.println("Big problems if InputStream cannot be closed");
+                }
+            }           
+        }
 		return null;
 	}
 
@@ -179,6 +201,7 @@ public class CompanyMissingInfoTask {
 				String sql_query = null;
 				String business_desc = shortdescription + " " +longdescription;
 				String business_desFi=business_desc.replace("'", "\\'");
+				ceo=ceo.replace("'", "\\'");
 				System.out.println("Going to save the following for ticker::" + ticker + "::" + ceo + "::" + sector
 						+ "::" + industry + "::" + shortdescription + "::" + longdescription + "::" + instrumenttype+ ":bb:" + business_desFi);
 				System.out.println();

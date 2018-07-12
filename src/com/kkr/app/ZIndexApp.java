@@ -1,6 +1,7 @@
 package com.kkr.app;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.Scanner;
 
 import com.kkr.model.task.TreasureyYieldTask;
@@ -25,7 +26,7 @@ public class ZIndexApp {
 		
 		
 		System.out.println("\n\n");
-		System.out.println("Scrap Yahoo to inser Volatility Index Dta in local database");
+		System.out.println("Scrap Yahoo to insert Volatility Index Data in local database");
 		System.out.println("\n");
 		System.out.println("insert date range for historical price data fetch.");
 		System.out.println("if not input provided then take automatically 1 year date range from current date\n");
@@ -44,13 +45,14 @@ public class ZIndexApp {
 		System.out.println("Frequency defult value: daily=1d");
 		System.out.println("other option: weekly=1wk, monthly=1mo\n");
 		System.out.println("Insert desired frequency:");
-		String freq=input.nextLine();
-		VolatilityIndexTask.HistoricalPricedataRead(start_date, end_date, show_option, freq,conL);
+    	String freq=input.nextLine();
+    	
+		boolean flag=VolatilityIndexTask.HistoricalPricedataRead(start_date, end_date, show_option, freq,conL);
 		System.out.println("\n\n");
 		System.out.println("::Call the process of updating the Volatility Index data::");
-		VolatilityIndexDataUpdateTask.VolatilityDataUpdateProcess(conL);
+		if(flag) VolatilityIndexDataUpdateTask.VolatilityDataUpdateProcess(conL);
+//		
 		System.out.println("Now inser or update data in portfolio time seies manager");
-		
 		System.out.println("Enter the start date to insert data:");
 		String start_date1 = input.nextLine();
 
@@ -58,5 +60,6 @@ public class ZIndexApp {
 		String end_date1 = input.nextLine();
 		ZIndexTask.PortfolioTimeseriesInsert(conL,conKkr,conkkrProd,start_date1,end_date1);
 	}
+	
 
 }

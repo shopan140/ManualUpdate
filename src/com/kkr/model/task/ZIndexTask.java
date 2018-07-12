@@ -5,7 +5,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -13,12 +15,12 @@ import java.util.Scanner;
 import com.kkr.util.DataBaseUtils;
 import com.kkr.util.DateUtils;
 
-
 public class ZIndexTask {
-	public static void PortfolioTimeseriesInsert(Connection conL,Connection conKkr, Connection conkkrProd,String start_date,String end_date) throws Exception {
+	public static void PortfolioTimeseriesInsert(Connection conL, Connection conKkr, Connection conkkrProd,
+			String start_date, String end_date) throws Exception {
 
 		Scanner input = new Scanner(System.in);
-		
+
 		ArrayList<Integer> YindexDev = createStatcElements(conKkr);
 		Map<Integer, Integer> percentIndexMapDev = PercentIndexfetch(conKkr);
 
@@ -29,26 +31,52 @@ public class ZIndexTask {
 				+ "' and rates_date<='" + end_date + "'ORDER BY rates_date ASC";
 		Statement locStat = conL.createStatement();
 		ResultSet rsL = locStat.executeQuery(SQL_query);
+
+		/*
+		 * modified the code due to handle the Anual Return close calculation 
+		 * consider the previous date
+		 */
+		String prevdate_query = "SELECT rates_date FROM `treasury_yield_curve_rates` where rates_date<'" + start_date
+				+ "'ORDER BY rates_date ASC limit 1";
+
+		Statement locStatprev = conL.createStatement();
+		ResultSet rsLprev = locStatprev.executeQuery(prevdate_query);
+
 		int i = 0;
+		int size2 = 0;
+		if (rsLprev != null) {
+			rsLprev.beforeFirst();
+			rsLprev.last();
+			size2 = rsLprev.getRow();
+		}
+		String prev_date1 = null;
+		rsLprev.first();
+		if (size2 == 0) {
+			prev_date1 = null;
+		} else
+			prev_date1 = rsLprev.getString(1);
+		// modification upto this point for considering the previous date
+		
 		String prev_date = null;
 		while (rsL.next()) {
 			String d_date = rsL.getString(1);
 			insertData(d_date, conL, conKkr, YindexDev);
-			inserDataForPercents(d_date, conKkr, percentIndexMapDev);
+			inserDataForPercents(d_date, conKkr, percentIndexMapDev, prev_date1);
 
-			insertData(d_date, conL, conKkr, YindexProd);
-			inserDataForPercents(d_date, conKkr, percentIndexMapProd);
+			insertData(d_date, conL, conkkrProd, YindexProd);
+			inserDataForPercents(d_date, conkkrProd, percentIndexMapProd, prev_date1);
 			if (i == 0) {
 				prev_date = d_date;
 				i++;
 				continue;
 			}
 			updatePortfolioTimeSeriePercents(d_date, prev_date, conKkr, percentIndexMapDev);
-			updatePortfolioTimeSeriePercents(d_date, prev_date, conKkr, percentIndexMapProd);
+			updatePortfolioTimeSeriePercents(d_date, prev_date, conkkrProd, percentIndexMapProd);
 			prev_date = d_date;
+			prev_date1 = d_date; // modified 2018-07-04 prev_date1
 		}
 
-		String SQL_query2 = "SELECT history_date from volatility_index  where history_date >= '" + start_date
+		String SQL_query2 = "SELECT history_date from volatility_index where history_date >= '" + start_date
 				+ "' and history_date <='" + end_date + "' ORDER BY history_date ASC";
 		Statement locStat1 = conL.createStatement();
 
@@ -58,14 +86,14 @@ public class ZIndexTask {
 		while (rsL1.next()) {
 			String d_date = rsL1.getString(1);
 			insertVolatilityData(d_date, conL, conKkr, volatality_index_dev);
-			insertVolatilityData(d_date, conL, conKkr, volatality_index_prod);
+			insertVolatilityData(d_date, conL, conkkrProd, volatality_index_prod);
 		}
 
 	}
 
 	private static int fetchVolIndex(Connection con) throws SQLException {
 		// TODO Auto-generated method stub
-		String sql_query = "SELECT user_saved_portfolio_id, name FROM `user_saved_portfolio` WHERE name like '%Annual Return%' order by user_id";
+		String sql_query = "SELECT user_saved_portfolio_id, name FROM `user_saved_portfolio` WHERE name like '%Volatility Index%' order by user_id";
 		Statement vis = con.createStatement();
 		ResultSet rsvi = vis.executeQuery(sql_query);
 		rsvi.next();
@@ -112,7 +140,7 @@ public class ZIndexTask {
 
 		String sql = "SELECT * FROM `user_saved_portfolio_timeseries` WHERE user_saved_portfolio_id BETWEEN '"
 				+ YieldIndex.get(0) + "' and '" + YieldIndex.get(YieldIndex.size() - 1) + "' and timeseries_date='"
-				+ desired_date + "'";
+				+ DateUtils.stringTodate(desired_date, "yyyy-MM-dd", "MM/dd/yyyy") + "'";
 		Statement check_st = conKkr.createStatement();
 		ResultSet checkrsl = check_st.executeQuery(sql);
 		int size = 0;
@@ -176,20 +204,28 @@ public class ZIndexTask {
 	 * Insert Percent data into time series table
 	 */
 	private static void inserDataForPercents(String desired_date, Connection conKkr,
-			Map<Integer, Integer> percentIndexMap) throws Exception {
+			Map<Integer, Integer> percentIndexMap, String prev_date) throws Exception {
 		// TODO Auto-generated method stub
 
 		String sql = "SELECT * FROM `user_saved_portfolio_timeseries`  WHERE " + "user_saved_portfolio_id BETWEEN '"
 				+ percentIndexMap.get(0) + "' and '" + percentIndexMap.get(percentIndexMap.size() - 1)
-				+ "' and timeseries_date='" + desired_date + "'";
+				+ "' and timeseries_date='" + DateUtils.stringTodate(desired_date, "yyyy-MM-dd", "MM/dd/yyyy") + "'";
 		Statement check_st = conKkr.createStatement();
 		ResultSet checkrsl = check_st.executeQuery(sql);
+
+		// Calendar cal = Calendar.getInstance();
+		// cal.setTime(new SimpleDateFormat("yyyy-MM-dd").parse(desired_date));
+		// cal.add(Calendar.DATE, -1);
+		// String prev_date=new
+		// SimpleDateFormat("yyyy-MM-dd").format(cal.getTime());
+		//
 		int size = 0;
 		if (checkrsl != null) {
 			checkrsl.beforeFirst();
 			checkrsl.last();
 			size = checkrsl.getRow();
 		}
+
 		if (size < 1) {
 			PreparedStatement pSLocal = conKkr.prepareStatement(
 					"insert into  user_saved_portfolio_timeseries (user_saved_portfolio_id,timeseries_date,returns,close) values (?,?,?,?)");
@@ -200,11 +236,30 @@ public class ZIndexTask {
 				double p = 1.00 / 252;
 				double pow_val = Math.pow(vv, p);
 				double return_val = pow_val - 1;
+				
+				/*
+				 * close calculation 2018-07-04 
+				 */
+				double prev_close = 0;
+				if (prev_date == null)
+					prev_close = 100;
+				else {
+					String sql_prev = "SELECT * FROM `user_saved_portfolio_timeseries`  WHERE "
+							+ "user_saved_portfolio_id= '" + entry.getKey() + "' and timeseries_date='"
+							+ DateUtils.stringTodate(prev_date, "yyyy-MM-dd", "MM/dd/yyyy") + "'";
+
+					Statement prev_st = conKkr.createStatement();
+					ResultSet prevRsl = prev_st.executeQuery(sql_prev);
+					prevRsl.next();
+					prev_close = prevRsl.getDouble(5);
+				}
+				double close_vale = (1 + return_val) * prev_close;
+				//upto this point close calculation 2018-07-04
 
 				pSLocal.setInt(1, entry.getKey());
 				pSLocal.setString(2, DateUtils.stringTodate(desired_date, "yyyy-MM-dd", "MM/dd/yyyy"));
 				pSLocal.setDouble(3, return_val);
-				pSLocal.setDouble(4, -1);
+				pSLocal.setDouble(4, close_vale);
 
 				pSLocal.execute();
 				System.out.println(mm++);
@@ -301,6 +356,5 @@ public class ZIndexTask {
 			update_statement.executeUpdate(query_str);
 
 		}
-
 	}
 }
